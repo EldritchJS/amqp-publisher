@@ -53,7 +53,7 @@ object DataPublisher {
     val service = system.actorOf(Props[PublisherServiceActor], "publisher-service")
     implicit val timeout = Timeout(5.seconds)
     // start a new HTTP server on port 8080 with our service actor
-    IO(Http) ? Http.Bind(service, interface = "localhost", port = port)
+    IO(Http) ? Http.Bind(service, interface = "0.0.0.0", port = port)
 
     opts.setReconnectAttempts(20)
         .setTrustAll(true)
