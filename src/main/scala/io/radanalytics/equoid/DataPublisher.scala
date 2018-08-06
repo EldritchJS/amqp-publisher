@@ -24,6 +24,8 @@ import scala.util.Properties
 object DataPublisher {
 
   var zipfianIterator: ZipfianPicker[String] = null
+  var idZipfIter: ZipfianPicker[String] = null
+  var geoZipfIter: ZipfianPicker[String] = null
 
   def getProp(snakeCaseName: String, defaultValue: String): String = {
     // return the value of 'SNAKE_CASE_NAME' env variable,
@@ -42,10 +44,14 @@ object DataPublisher {
     val password = getProp("AMQP_PASSWORD", "daikon")
     val address = getProp("QUEUE_NAME", "salesq")
     val dataURL = getProp("DATA_URL", "https://raw.githubusercontent.com/EldritchJS/equoid-data-publisher/master/data/LiquorNames.txt")
+    val idDataURL = getProp("ID_DATA_URL", "https://raw.githubusercontent.com/EldritchJS/equoid-data-publisher/master/data/IDs.txt")
+    val geoDataURL = getProp("GEO_DATA_URL", "https://raw.githubusercontent.com/EldritchJS/equoid-data-publisher/master/data/Countries.txt")
     val vertx: Vertx = Vertx.vertx()
     val client:ProtonClient = ProtonClient.create(vertx)
     val opts:ProtonClientOptions = new ProtonClientOptions()
     zipfianIterator = ZipfianPicker[String](dataURL)
+    idZipfIter = ZipfianPicker[String](idDataURL)
+    geoZipfIter = ZipfianPicker[String](geoDataURL)
 
 
     // initialize Akka&Spray
@@ -72,12 +78,19 @@ object DataPublisher {
           vertx.setPeriodic(1000, new Handler[Long] {
             override def handle(timer: Long): Unit = {
               val message: Message = ProtonHelper.message()
-              val record = zipfianIterator.synchronized {
-                 if (zipfianIterator.hasNext) zipfianIterator.next else {
-                  zipfianIterator.reset()
-                  zipfianIterator.next
+              val idRecord = idZipfIter.synchronized {
+                 if (idZipfIter.hasNext) idZipfIter.next else {
+                  idZipfIter.reset()
+                  idZipfIter.next
                 }
               }
+              val geoRecord = geoZipfIter.synchronized {
+                if (geoZipfIter.hasNext) geoZipfIter.next else {
+                  geoZipfIter.reset()
+                  geoZipfIter.next
+                }
+              }
+              val record = idRecord + "," + geoRecord
               message.setBody(new AmqpValue(record))
 
               println("Record = " + record)
