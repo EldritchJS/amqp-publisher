@@ -17,6 +17,7 @@ import spray.can.Http
 import scala.concurrent.duration._
 import scala.io.{Codec, Source}
 import scala.util.Properties
+import scala.io.Source
 
 /**
   * Sample application which publishes records to an AMQP node
@@ -24,8 +25,8 @@ import scala.util.Properties
 object DataPublisher {
 
   var zipfianIterator: ZipfianPicker[String] = null
-  var idZipfIter: ZipfianPicker[String] = null
-  var geoZipfIter: ZipfianPicker[String] = null
+  var primaryZipfIter: ZipfianPicker[String] = null
+  var secondaryZipfIter: ZipfianPicker[String] = null
 
   def getProp(snakeCaseName: String, defaultValue: String): String = {
     // return the value of 'SNAKE_CASE_NAME' env variable,
@@ -43,23 +44,36 @@ object DataPublisher {
     val username = getProp("AMQP_USERNAME", "daikon")
     val password = getProp("AMQP_PASSWORD", "daikon")
     val address = getProp("QUEUE_NAME", "salesq")
-    val dataURL = getProp("DATA_URL", "https://raw.githubusercontent.com/EldritchJS/equoid-data-publisher/master/data/LiquorNames.txt")
-    val idDataURL = getProp("STOCK_CODE_DATA_URL", "https://raw.githubusercontent.com/EldritchJS/equoid-data-publisher/master/data/StockCodes.txt")
-    val geoDataURL = getProp("GEO_DATA_URL", "https://raw.githubusercontent.com/EldritchJS/equoid-data-publisher/master/data/Countries.txt")
+    //val dataURL = getProp("DATA_URL", "https://raw.githubusercontent.com/EldritchJS/equoid-data-publisher/master/data/LiquorNames.txt")
+    val primaryDataURL = getProp("DATA_URL_PRIMARY", "https://raw.githubusercontent.com/EldritchJS/equoid-data-publisher/master/data/StockCodes.txt")
+    val secondaryDataURL = getProp("DATA_URL_SECONDARY", "https://raw.githubusercontent.com/EldritchJS/equoid-data-publisher/master/data/Countries.txt")
     val vertx: Vertx = Vertx.vertx()
     val client:ProtonClient = ProtonClient.create(vertx)
-    val opts:ProtonClientOptions = new ProtonClientOptions()
-    zipfianIterator = ZipfianPicker[String](dataURL)
-    idZipfIter = ZipfianPicker[String](idDataURL)
-    geoZipfIter = ZipfianPicker[String](geoDataURL)
+    val opMode = getProp("OP_MODE", "single") // single,dual,linear 
 
+    val opts:ProtonClientOptions = new ProtonClientOptions()
 
     // initialize Akka&Spray
     implicit val system = ActorSystem("on-spray-can")
     val service = system.actorOf(Props[PublisherServiceActor], "publisher-service")
     implicit val timeout = Timeout(5.seconds)
+     
+    var buffer:Iterator[String] = null
+    var totalLines = 0 
+    var fileiter:scala.io.BufferedSource = null
+
+    if(opMode != "linear") {
+      //zipfianIterator = ZipfianPicker[String](dataURL)
+      primaryZipfIter = ZipfianPicker[String](primaryDataURL)
+      secondaryZipfIter = if (opMode == "dual") ZipfianPicker[String](secondaryDataURL) else null
     // start a new HTTP server on port 8080 with our service actor
-    IO(Http) ? Http.Bind(service, interface = "0.0.0.0", port = port)
+      IO(Http) ? Http.Bind(service, interface = "0.0.0.0", port = port)
+    } else {
+        fileiter = Source.fromURL(primaryDataURL)
+        buffer = fileiter.getLines()
+        buffer.drop(1)
+        totalLines = Source.fromURL(primaryDataURL).getLines.size
+    }
 
     opts.setReconnectAttempts(20)
         .setTrustAll(true)
@@ -78,19 +92,35 @@ object DataPublisher {
           vertx.setPeriodic(1000, new Handler[Long] {
             override def handle(timer: Long): Unit = {
               val message: Message = ProtonHelper.message()
-              val idRecord = idZipfIter.synchronized {
-                 if (idZipfIter.hasNext) idZipfIter.next else {
-                  idZipfIter.reset()
-                  idZipfIter.next
+              var record = ""
+              if(opMode != "linear") {
+                val primaryRecord = primaryZipfIter.synchronized {
+                  if (primaryZipfIter.hasNext) primaryZipfIter.next else {
+                    primaryZipfIter.reset()
+                    primaryZipfIter.next
+                  }
                 }
-              }
-              val geoRecord = geoZipfIter.synchronized {
-                if (geoZipfIter.hasNext) geoZipfIter.next else {
-                  geoZipfIter.reset()
-                  geoZipfIter.next
+                if(opMode == "dual") {
+                  val secondaryRecord = secondaryZipfIter.synchronized {
+                    if (secondaryZipfIter.hasNext) secondaryZipfIter.next else {
+                      secondaryZipfIter.reset()
+                      secondaryZipfIter.next
+                    }
+                  }
+                  record = primaryRecord + "," + secondaryRecord
                 }
+                else {
+                  record = primaryRecord
+                }
+              } else {
+                  if(!buffer.hasNext) {
+                    fileiter.reset()
+                    buffer = fileiter.getLines()
+                    buffer.drop(1)
+                  } 
+                  record =  if(buffer.hasNext) buffer.next() else "end"
               }
-              val record = idRecord + "," + geoRecord
+
               message.setBody(new AmqpValue(record))
 
               println("Record = " + record)
@@ -113,9 +143,9 @@ object DataPublisher {
   }
 
   def addFrequentItem(item: String) {
-    if (zipfianIterator != null) {
-      zipfianIterator.synchronized {
-        zipfianIterator = zipfianIterator.prepend(item)
+    if (primaryZipfIter != null) {
+      primaryZipfIter.synchronized {
+        primaryZipfIter = primaryZipfIter.prepend(item)
       }
     }
     println(s"New frequent item $item has been added!")
