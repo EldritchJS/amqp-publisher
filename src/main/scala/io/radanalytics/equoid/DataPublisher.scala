@@ -24,7 +24,6 @@ import scala.io.Source
   */
 object DataPublisher {
 
-  var zipfianIterator: ZipfianPicker[String] = null
   var primaryZipfIter: ZipfianPicker[String] = null
   var secondaryZipfIter: ZipfianPicker[String] = null
 
@@ -63,7 +62,6 @@ object DataPublisher {
     var fileiter:scala.io.BufferedSource = null
 
     if(opMode != "linear") {
-      //zipfianIterator = ZipfianPicker[String](dataURL)
       primaryZipfIter = ZipfianPicker[String](primaryDataURL)
       secondaryZipfIter = if (opMode == "dual") ZipfianPicker[String](secondaryDataURL) else null
     // start a new HTTP server on port 8080 with our service actor
