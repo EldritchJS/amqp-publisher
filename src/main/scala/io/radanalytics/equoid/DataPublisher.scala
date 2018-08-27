@@ -39,15 +39,15 @@ object DataPublisher {
 
     val amqpHost = getProp("AMQP_HOST", "broker-amq-amqp")
     val amqpPort = getProp("AMQP_PORT", "5672").toInt
-    val port = getProp("PORT", "8080").toInt
+    val restPort = getProp("PORT", "8080").toInt
     val username = getProp("AMQP_USERNAME", "daikon")
     val password = getProp("AMQP_PASSWORD", "daikon")
-    val address = getProp("QUEUE_NAME", "salesq")
+    val address = getProp("QUEUE_NAME", "recordq")
     val primaryDataURL = getProp("DATA_URL_PRIMARY", "https://raw.githubusercontent.com/EldritchJS/equoid-data-publisher/master/data/StockCodes.txt")
     val secondaryDataURL = getProp("DATA_URL_SECONDARY", "https://raw.githubusercontent.com/EldritchJS/equoid-data-publisher/master/data/Countries.txt")
+    val opMode = getProp("OP_MODE", "single") // single,dual,linear 
     val vertx: Vertx = Vertx.vertx()
     val client:ProtonClient = ProtonClient.create(vertx)
-    val opMode = getProp("OP_MODE", "single") // single,dual,linear 
 
     val opts:ProtonClientOptions = new ProtonClientOptions()
 
@@ -64,7 +64,7 @@ object DataPublisher {
       primaryZipfIter = ZipfianPicker[String](primaryDataURL)
       secondaryZipfIter = if (opMode == "dual") ZipfianPicker[String](secondaryDataURL) else null
     // start a new HTTP server on port 8080 with our service actor
-      IO(Http) ? Http.Bind(service, interface = "0.0.0.0", port = port)
+      IO(Http) ? Http.Bind(service, interface = "0.0.0.0", port = restPort)
     } else {
         fileiter = Source.fromURL(primaryDataURL)
         buffer = fileiter.getLines()
