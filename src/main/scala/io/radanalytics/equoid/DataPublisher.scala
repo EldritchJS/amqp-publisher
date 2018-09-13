@@ -43,8 +43,8 @@ object DataPublisher {
     val username = getProp("AMQP_USERNAME", "daikon")
     val password = getProp("AMQP_PASSWORD", "daikon")
     val address = getProp("QUEUE_NAME", "recordq")
-    val primaryDataURL = getProp("DATA_URL_PRIMARY", "https://raw.githubusercontent.com/EldritchJS/equoid-data-publisher/master/data/StockCodes.txt")
-    val secondaryDataURL = getProp("DATA_URL_SECONDARY", "https://raw.githubusercontent.com/EldritchJS/equoid-data-publisher/master/data/Countries.txt")
+    val primaryDataURL = getProp("DATA_URL_PRIMARY", "https://raw.githubusercontent.com/radanalyticsio/equoid-data-publisher/master/data/StockCodes.txt")
+    val secondaryDataURL = getProp("DATA_URL_SECONDARY", "https://raw.githubusercontent.com/radanalyticsio/equoid-data-publisher/master/data/Countries.txt")
     val opMode = getProp("OP_MODE", "single") // single,dual,linear 
     val vertx: Vertx = Vertx.vertx()
     val client:ProtonClient = ProtonClient.create(vertx)
@@ -75,7 +75,8 @@ object DataPublisher {
     opts.setReconnectAttempts(20)
         .setTrustAll(true)
         .setConnectTimeout(10000) // timeout = 10sec, reconnect interval is 1sec
-    client.connect(opts, amqpHost, amqpPort, username, password, new Handler[AsyncResult[ProtonConnection]] {
+    //client.connect(opts, amqpHost, amqpPort, username, password, new Handler[AsyncResult[ProtonConnection]] {
+    client.connect(opts, amqpHost, amqpPort, new Handler[AsyncResult[ProtonConnection]] {
       override def handle(ar: AsyncResult[ProtonConnection]): Unit = {
         if (ar.succeeded()) {
 
