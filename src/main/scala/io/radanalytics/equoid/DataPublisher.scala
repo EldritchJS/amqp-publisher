@@ -43,8 +43,8 @@ object DataPublisher {
     val username = getProp("AMQP_USERNAME", "daikon")
     val password = getProp("AMQP_PASSWORD", "daikon")
     val address = getProp("QUEUE_NAME", "recordq")
-    val primaryDataURL = getProp("DATA_URL_PRIMARY", "https://raw.githubusercontent.com/EldritchJS/equoid-data-publisher/master/data/StockCodes.txt")
-    val secondaryDataURL = getProp("DATA_URL_SECONDARY", "https://raw.githubusercontent.com/EldritchJS/equoid-data-publisher/master/data/Countries.txt")
+    val primaryDataURL = getProp("DATA_URL_PRIMARY", "https://raw.githubusercontent.com/radanalyticsio/equoid-data-publisher/master/data/StockCodes.txt")
+    val secondaryDataURL = getProp("DATA_URL_SECONDARY", "https://raw.githubusercontent.com/radanalyticsio/equoid-data-publisher/master/data/Countries.txt")
     val opMode = getProp("OP_MODE", "single") // single,dual,linear 
     val vertx: Vertx = Vertx.vertx()
     val client:ProtonClient = ProtonClient.create(vertx)
