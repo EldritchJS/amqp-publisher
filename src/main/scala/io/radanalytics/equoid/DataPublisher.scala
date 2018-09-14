@@ -75,7 +75,8 @@ object DataPublisher {
     opts.setReconnectAttempts(20)
         .setTrustAll(true)
         .setConnectTimeout(10000) // timeout = 10sec, reconnect interval is 1sec
-    client.connect(opts, amqpHost, amqpPort, username, password, new Handler[AsyncResult[ProtonConnection]] {
+    //client.connect(opts, amqpHost, amqpPort, username, password, new Handler[AsyncResult[ProtonConnection]] {
+    client.connect(opts, amqpHost, amqpPort, new Handler[AsyncResult[ProtonConnection]] {
       override def handle(ar: AsyncResult[ProtonConnection]): Unit = {
         if (ar.succeeded()) {
 
